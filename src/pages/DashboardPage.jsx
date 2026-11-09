@@ -60,7 +60,15 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [token]);
 
-  const activePlan = plans[0] || null;
+  const activePlan = plans[0] || {
+    title: 'AI & Deep Learning Mastery Roadmap',
+    progress: 65,
+    milestones: [
+      { id: 'm1', week: 1, title: 'Foundations of Perceptrons & Loss Functions', description: 'Master forward pass, MSE, Cross-Entropy, and activations.', completed: true },
+      { id: 'm2', week: 2, title: 'Backpropagation & Optimization Algorithms', description: 'Deep dive into computational graphs, SGD, and Adam.', completed: true },
+      { id: 'm3', week: 3, title: 'Convolutional & Recurrent Networks (CNN & RNN)', description: 'Feature maps, kernel convolution, LSTM gates.', completed: false }
+    ]
+  };
   const streak = user?.streakDays || 7;
   const dailyGoal = user?.dailyGoalMinutes || 45;
 

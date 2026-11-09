@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
@@ -435,21 +436,35 @@ app.post('/api/flashcards/:id/toggle', authenticateToken, (req, res) => {
 });
 
 // ----------------------------------------------------
-// 8. STATIC ASSETS & ROOT SERVING
+// 8. STATIC ASSETS & PRODUCTION SERVING
 // ----------------------------------------------------
+const distPath = path.join(__dirname, '..', 'dist');
 const rootPath = path.join(__dirname, '..');
-app.use(express.static(rootPath));
+
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+} else {
+  app.use(express.static(rootPath));
+}
 
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'API endpoint not found' });
   }
-  res.sendFile(path.join(rootPath, 'index.html'));
+  const indexPath = fs.existsSync(path.join(distPath, 'index.html'))
+    ? path.join(distPath, 'index.html')
+    : path.join(rootPath, 'index.html');
+  res.sendFile(indexPath);
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 EDUORA Backend Server running on port ${PORT}`);
-  console.log(`🔗 API Base: http://localhost:${PORT}/api`);
-});
+// Start Server in non-serverless environments
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 EDUORA Backend Server running on port ${PORT}`);
+    console.log(`🔗 API Base: http://localhost:${PORT}/api`);
+  });
+}
+
+export default app;
+export { app };
 
