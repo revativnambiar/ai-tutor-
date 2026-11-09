@@ -5,12 +5,16 @@ import bcrypt from 'bcryptjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.VERCEL ? path.join('/tmp', 'data') : path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'eduora_db.json');
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+// Ensure data directory exists if possible
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('Data directory notice:', e.message);
 }
 
 // Initial seed data generator
@@ -226,32 +230,40 @@ Note: Cannot handle negative cycles! For negative edges, use Bellman-Ford algori
   };
 }
 
-// Database helper functions
+// Database helper functions with in-memory caching for serverless resilience
+let inMemoryStore = null;
+
 export const db = {
   read() {
     try {
-      if (!fs.existsSync(DB_FILE)) {
-        const initial = getInitialSeedData();
-        fs.writeFileSync(DB_FILE, JSON.stringify(initial, null, 2), 'utf8');
-        return initial;
+      if (fs.existsSync(DB_FILE)) {
+        const raw = fs.readFileSync(DB_FILE, 'utf8');
+        inMemoryStore = JSON.parse(raw);
+        return inMemoryStore;
       }
-      const raw = fs.readFileSync(DB_FILE, 'utf8');
-      return JSON.parse(raw);
     } catch (err) {
-      console.error('Error reading DB file, reinitializing seed data:', err);
-      const initial = getInitialSeedData();
-      fs.writeFileSync(DB_FILE, JSON.stringify(initial, null, 2), 'utf8');
-      return initial;
+      console.warn('DB file read notice, using in-memory fallback:', err.message);
     }
+
+    if (!inMemoryStore) {
+      inMemoryStore = getInitialSeedData();
+      try {
+        fs.writeFileSync(DB_FILE, JSON.stringify(inMemoryStore, null, 2), 'utf8');
+      } catch (e) {
+        // Safe to ignore in read-only environments
+      }
+    }
+    return inMemoryStore;
   },
 
   write(data) {
+    inMemoryStore = data;
     try {
       fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
       return true;
     } catch (err) {
-      console.error('Error writing to DB file:', err);
-      return false;
+      console.warn('DB file write notice (in-memory state updated):', err.message);
+      return true;
     }
   },
 

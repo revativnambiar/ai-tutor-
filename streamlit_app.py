@@ -807,3 +807,4 @@ elif page == "⚙️ Settings":
             student['academicLevel'] = new_level
             student['dailyGoalMinutes'] = new_goal
             st.success("Preferences updated successfully!")
+
